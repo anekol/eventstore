@@ -21,15 +21,19 @@ defmodule EventStore.Storage.Schema do
   def drop(config) do
     schema = Keyword.fetch!(config, :schema)
 
-    case Database.execute(config, ~s(DROP SCHEMA "#{schema}" CASCADE;)) do
-      :ok ->
-        :ok
+    if Database.exists?(config) do
+      case Database.execute(config, ~s(DROP SCHEMA "#{schema}" CASCADE;)) do
+        :ok ->
+          :ok
 
-      {:error, %{postgres: %{code: :invalid_schema_name}}} ->
-        {:error, :already_down}
+        {:error, %{postgres: %{code: :invalid_schema_name}}} ->
+          {:error, :already_down}
 
-      {:error, error} ->
-        {:error, Exception.message(error)}
+        {:error, error} ->
+          {:error, Exception.message(error)}
+      end
+    else
+      {:error, :already_down}
     end
   end
 end

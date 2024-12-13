@@ -7,6 +7,10 @@ defmodule EventStore.Storage.Database do
 
   def drop(config), do: storage_down(config)
 
+  def exists?(config) do
+    false
+  end
+
   def execute(config, script) do
     opts = Keyword.put(config, :timeout, :infinity)
 
@@ -86,7 +90,7 @@ defmodule EventStore.Storage.Database do
   defp storage_up(opts) do
     database =
       Keyword.fetch!(opts, :database) ||
-        raise ":database is nil in repository configuration"
+        raise ":database is nil in repository configuration #{inspect(opts)}"
 
     encoding = opts[:encoding] || "UTF8"
 
@@ -116,7 +120,8 @@ defmodule EventStore.Storage.Database do
 
   defp storage_down(opts) do
     database =
-      Keyword.fetch!(opts, :database) || raise ":database is nil in repository configuration"
+      Keyword.fetch!(opts, :database) ||
+        raise ":database is nil in repository configuration #{inspect(opts)}"
 
     command = "DROP DATABASE \"#{database}\""
 
