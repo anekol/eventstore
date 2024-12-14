@@ -16,7 +16,7 @@ defmodule EventStore.Storage.Database do
     end
 
     args =
-      include_default_args([database], config)
+      (["-lqt"] ++ include_default_args([database], config))
       |> IO.inspect(label: "DATABASEEXISTS ARGS")
 
     env = parse_env(config)
