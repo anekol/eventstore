@@ -7,26 +7,19 @@ defmodule EventStore.Storage.Database do
 
   def drop(config), do: storage_down(config)
 
-  def exists?(opts) do
-    database =
-      Keyword.fetch!(opts, :database) ||
-        raise ":database is nil in repository configuration #{inspect(opts)}"
+  def exists?(config) do
+    database = Keyword.fetch!(config, :database)
 
-    command = "DROP DATABASE \"#{database}\""
-
-    default_database = Keyword.get(opts, :default_database, "postgres")
-    opts = Keyword.put(opts, :database, default_database)
-
-    case run_query(command, opts) do
-      {:ok, _} ->
-        :ok
-
-      {:error, %{postgres: %{code: :invalid_catalog_name}}} ->
-        {:error, :already_down}
-
-      {:error, error} ->
-        {:error, Exception.message(error)}
+    unless System.find_executable("pgsql") do
+      raise "could not find executable `pgsql` in path, " <>
+              "please guarantee it is available before running event_store mix commands"
     end
+
+    args = include_default_args([database], config)
+    env = parse_env(config)
+
+    System.cmd("psql", args, env: env)
+    |> IO.inspect(label: "DATABASEEXISTS?")
   end
 
   def execute(config, script) do
