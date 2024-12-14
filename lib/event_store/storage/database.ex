@@ -10,8 +10,8 @@ defmodule EventStore.Storage.Database do
   def exists?(config) do
     database = Keyword.fetch!(config, :database)
 
-    unless System.find_executable("pgsql") do
-      raise "could not find executable `pgsql` in path, " <>
+    unless System.find_executable("psql") do
+      raise "could not find executable `psql` in path, " <>
               "please guarantee it is available before running event_store mix commands"
     end
 
