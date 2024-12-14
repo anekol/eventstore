@@ -7,8 +7,26 @@ defmodule EventStore.Storage.Database do
 
   def drop(config), do: storage_down(config)
 
-  def exists?(config) do
-    false
+  def exists?(opts) do
+    database =
+      Keyword.fetch!(opts, :database) ||
+        raise ":database is nil in repository configuration #{inspect(opts)}"
+
+    command = "DROP DATABASE \"#{database}\""
+
+    default_database = Keyword.get(opts, :default_database, "postgres")
+    opts = Keyword.put(opts, :database, default_database)
+
+    case run_query(command, opts) do
+      {:ok, _} ->
+        :ok
+
+      {:error, %{postgres: %{code: :invalid_catalog_name}}} ->
+        {:error, :already_down}
+
+      {:error, error} ->
+        {:error, Exception.message(error)}
+    end
   end
 
   def execute(config, script) do
