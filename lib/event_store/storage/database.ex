@@ -15,7 +15,10 @@ defmodule EventStore.Storage.Database do
               "please guarantee it is available before running event_store mix commands"
     end
 
-    args = include_default_args([database], config)
+    args =
+      include_default_args([database], config)
+      |> IO.inspect(label: "DATABASEEXISTS ARGS")
+
     env = parse_env(config)
 
     System.cmd("psql", args, env: env)
