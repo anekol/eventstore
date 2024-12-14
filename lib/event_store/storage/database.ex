@@ -15,14 +15,13 @@ defmodule EventStore.Storage.Database do
               "please guarantee it is available before running event_store mix commands"
     end
 
-    args =
-      (["-lqt"] ++ include_default_args([database], config))
-      |> IO.inspect(label: "DATABASEEXISTS ARGS")
-
+    args = ["-lqt"] ++ include_default_args([database], config)
     env = parse_env(config)
 
-    System.cmd("psql", args, env: env)
-    |> IO.inspect(label: "DATABASEEXISTS?")
+    case System.cmd("psql", args, env: env) do
+      {"", 2} -> false
+      _ -> true
+    end
   end
 
   def execute(config, script) do
