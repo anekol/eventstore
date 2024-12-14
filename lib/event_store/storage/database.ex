@@ -18,7 +18,7 @@ defmodule EventStore.Storage.Database do
     args = ["-lqt"] ++ include_default_args([database], config)
     env = parse_env(config)
 
-    case System.cmd("psql", args, env: env) do
+    case System.cmd("psql", args, env: env, stderr_to_stdout: true) do
       {"", 2} -> false
       _ -> true
     end
