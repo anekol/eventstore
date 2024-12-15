@@ -15,12 +15,18 @@ defmodule EventStore.Storage.Database do
               "please guarantee it is available before running event_store mix commands"
     end
 
-    args = ["-lqt"] ++ include_default_args([database], config)
+    args = include_default_args(["-lqt"], config)
+
     env = parse_env(config)
 
-    case System.cmd("psql", args, env: env, stderr_to_stdout: true) do
-      {"", 2} -> false
-      _ -> true
+    case System.cmd("psql", args, env: env) do
+      {result, 0} ->
+        String.split(result, "\n")
+        |> Enum.map(&(String.split(&1, "|") |> hd |> String.trim()))
+        |> Enum.any?(&(&1 == database))
+
+      {_, error_code} ->
+        raise "psql: error code: #{error_code} - could not check with \"psql #{args}\" for database \"#{database}\"."
     end
   end
 
@@ -141,15 +147,19 @@ defmodule EventStore.Storage.Database do
     default_database = Keyword.get(opts, :default_database, "postgres")
     opts = Keyword.put(opts, :database, default_database)
 
-    case run_query(command, opts) do
-      {:ok, _} ->
-        :ok
+    if exists?(opts) do
+      case run_query(command, opts) do
+        {:ok, _} ->
+          :ok
 
-      {:error, %{postgres: %{code: :invalid_catalog_name}}} ->
-        {:error, :already_down}
+        {:error, %{postgres: %{code: :invalid_catalog_name}}} ->
+          {:error, :already_down}
 
-      {:error, error} ->
-        {:error, Exception.message(error)}
+        {:error, error} ->
+          {:error, Exception.message(error)}
+      end
+    else
+      {:error, :already_down}
     end
   end
 
