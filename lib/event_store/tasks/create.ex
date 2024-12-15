@@ -26,30 +26,42 @@ defmodule EventStore.Tasks.Create do
 
     case Database.create(config) do
       :ok ->
-        write_info("The EventStore database has been created.", opts)
+        write_info("The EventStore #{eventstore(config)} has been created.", opts)
 
       {:error, :already_up} ->
-        write_info("The EventStore database already exists.", opts)
+        if config[:schema] == "public",
+          do: write_info("The EventStore #{eventstore(config)} already exists.", opts)
 
       {:error, term} ->
         raise_msg(
-          "The EventStore database couldn't be created, reason given: #{inspect(term)}.",
+          "The EventStore #{eventstore(config)} couldn't be created, reason given: #{inspect(term)}.",
           opts
         )
     end
 
     case Schema.create(config) do
       :ok ->
-        write_info("The EventStore schema has been created.", opts)
+        write_info(
+          "The EventStore #{eventstore(config)} has been created.",
+          opts
+        )
 
       {:error, :already_up} ->
-        write_info("The EventStore schema already exists.", opts)
+        if config[:schema] != "public",
+          do: write_info("The EventStore #{eventstore(config)} already exists.", opts)
 
       {:error, term} ->
         raise_msg(
-          "The EventStore schema couldn't be created, reason given: #{inspect(term)}.",
+          "The EventStore #{eventstore(config)} couldn't be created, reason given: #{inspect(term)}.",
           opts
         )
+    end
+  end
+
+  defp eventstore(config) do
+    case(config[:schema]) do
+      "public" -> "database \"#{config[:database]}\""
+      _ -> "database \"#{config[:database]} schema \"#{config[:schema]}\""
     end
   end
 end

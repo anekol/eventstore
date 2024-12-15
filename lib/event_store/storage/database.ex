@@ -7,6 +7,29 @@ defmodule EventStore.Storage.Database do
 
   def drop(config), do: storage_down(config)
 
+  def exists?(config) do
+    database = Keyword.fetch!(config, :database)
+
+    unless System.find_executable("psql") do
+      raise "could not find executable `psql` in path, " <>
+              "please guarantee it is available before running event_store mix commands"
+    end
+
+    args = include_default_args(["-lqt"], config)
+
+    env = parse_env(config)
+
+    case System.cmd("psql", args, env: env) do
+      {result, 0} ->
+        String.split(result, "\n")
+        |> Enum.map(&(String.split(&1, "|") |> hd |> String.trim()))
+        |> Enum.any?(&(&1 == database))
+
+      {_, error_code} ->
+        raise "psql: error code: #{error_code} - could not check with \"psql #{args}\" for database \"#{database}\"."
+    end
+  end
+
   def execute(config, script) do
     opts = Keyword.put(config, :timeout, :infinity)
 
@@ -86,7 +109,7 @@ defmodule EventStore.Storage.Database do
   defp storage_up(opts) do
     database =
       Keyword.fetch!(opts, :database) ||
-        raise ":database is nil in repository configuration"
+        raise ":database is nil in repository configuration #{inspect(opts)}"
 
     encoding = opts[:encoding] || "UTF8"
 
@@ -116,22 +139,27 @@ defmodule EventStore.Storage.Database do
 
   defp storage_down(opts) do
     database =
-      Keyword.fetch!(opts, :database) || raise ":database is nil in repository configuration"
+      Keyword.fetch!(opts, :database) ||
+        raise ":database is nil in repository configuration #{inspect(opts)}"
 
     command = "DROP DATABASE \"#{database}\""
 
     default_database = Keyword.get(opts, :default_database, "postgres")
     opts = Keyword.put(opts, :database, default_database)
 
-    case run_query(command, opts) do
-      {:ok, _} ->
-        :ok
+    if exists?(opts) do
+      case run_query(command, opts) do
+        {:ok, _} ->
+          :ok
 
-      {:error, %{postgres: %{code: :invalid_catalog_name}}} ->
-        {:error, :already_down}
+        {:error, %{postgres: %{code: :invalid_catalog_name}}} ->
+          {:error, :already_down}
 
-      {:error, error} ->
-        {:error, Exception.message(error)}
+        {:error, error} ->
+          {:error, Exception.message(error)}
+      end
+    else
+      {:error, :already_down}
     end
   end
 

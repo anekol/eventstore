@@ -51,11 +51,11 @@ defmodule EventStore.Tasks.Migrate do
         callback.()
       else
         {:error, :lock_already_taken} ->
-          write_info("EventStore database migration already in progress.", opts)
+          write_info("EventStore #{eventstore(config)} migration already in progress.", opts)
 
         {:error, %Postgrex.Error{} = error} ->
           raise_msg(
-            "The EventStore database could not be migrated. Could not acquire migration lock due to: " <>
+            "The EventStore #{eventstore(config)} could not be migrated. Could not acquire migration lock due to: " <>
               inspect(error),
             opts
           )
@@ -157,5 +157,12 @@ defmodule EventStore.Tasks.Migrate do
     Enum.map(rows, fn [major_version, minor_version, patch_version] ->
       Version.parse!("#{major_version}.#{minor_version}.#{patch_version}")
     end)
+  end
+
+  defp eventstore(config) do
+    case(config[:schema]) do
+      "public" -> "database \"#{config[:database]}\""
+      _ -> "database \"#{config[:database]} schema \"#{config[:schema]}\""
+    end
   end
 end
